@@ -1,27 +1,18 @@
-import SEO from '@/components/SEO';
 import { GetServerSideProps } from 'next';
-import { useCallback } from 'react';
+import Link from 'next/link'
 
+import Prismic from 'prismic-javascript';
+import PrismicDOM from 'prismic-dom';
+import { Document } from 'prismic-javascript/types/documents'
+
+import { client } from '@/lib/prismic';
 import { Title } from '../styles/pages/Home'
-
-interface IProduct {
-  id: string;
-  title: string;
-}
-
+import SEO from '@/components/SEO';
 interface HomeProps {
-  recommendedProducts: IProduct[];
+  recommendedProducts: Document[];
 }
 
 export default function Home({ recommendedProducts }: HomeProps) {
-  const handleSum = useCallback(async () => {
-    console.log(process.env.NEXT_PUBLIC_API_URL)
-    
-    const math = (await import('../lib/math')).default
-
-    alert(math.sum(1, 2))
-  }, [])
-
   return (
     <div>
       <SEO 
@@ -35,23 +26,29 @@ export default function Home({ recommendedProducts }: HomeProps) {
 
         <ul>
           {recommendedProducts.map(recommendedProduct => (
-            <li key={recommendedProduct.id}>{recommendedProduct.title}</li>
+            <li key={recommendedProduct.id}>
+              <Link href={`/catalog/products/${recommendedProduct.uid}`}>
+                <a>
+                  {PrismicDOM.RichText.asText(recommendedProduct.data.title)}
+                </a>
+              </Link>
+            </li>
           ))}
         </ul>
       </section>
 
-      <button onClick={handleSum} type='button'>Sum</button>
     </div>
   )
 }
 
-export const getServerSideProps: GetServerSideProps<HomeProps> = async ()  => {
-  const response = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/recommended`)
-  const recommendedProducts = await response.json();
+export const getServerSideProps: GetServerSideProps<HomeProps> = async ()  => {  
+  const recommendedProducts = await client().query([
+    Prismic.Predicates.at('document.type', 'product')
+  ]);
 
   return {
     props: {
-      recommendedProducts
+      recommendedProducts: recommendedProducts.results
     }
   }
 }
